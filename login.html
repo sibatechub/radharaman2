@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html>
+
+
+
+
+<head>
+
+
+
+
+<base target="_top">
+
+
+
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1">
+<style>
+body{
+margin:0;
+background:#f4f6f9;
+font-family:Segoe UI,Arial,sans-serif;
+}
+
+
+
+
+.container{
+max-width:650px;
+margin:30px auto;
+background:#ffffff;
+border-radius:12px;
+border:1px solid #d1d5db;
+overflow:hidden;
+box-shadow:0 2px 10px rgba(0,0,0,0.08);
+}
+
+
+
+
+.header{
+background:#1e3a8a;
+padding:20px;
+text-align:center;
+color:#ffffff;
+}
+
+
+
+
+.header h1{
+margin:0;
+font-size:24px;
+}
+
+
+
+
+.header p{
+margin:5px 0 0;
+font-size:13px;
+color:#dbeafe;
+}
+
+
+
+
+.goldbar{
+height:5px;
+background:#f59e0b;
+}
+
+
+
+
+.content{
+padding:25px;
+}
+
+
+
+
+.card{
+background:#f8fafc;
+border-left:4px solid #1e3a8a;
+padding:15px;
+border-radius:6px;
+margin-bottom:20px;
+}
+
+
+
+
+input{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:1px solid #d1d5db;
+border-radius:6px;
+box-sizing:border-box;
+}
+
+
+
+
+button{
+width:100%;
+padding:12px;
+margin-top:15px;
+background:#1e3a8a;
+color:#fff;
+border:none;
+border-radius:6px;
+font-size:15px;
+cursor:pointer;
+}
+
+
+
+
+button:hover{
+background:#16307a;
+}
+.signupBtn{
+    background:#ffffff;
+    color:#1e3a8a;
+    border:2px solid #1e3a8a;
+    margin-top:10px;
+}
+
+.signupBtn:hover{
+    background:#eff6ff;
+}
+
+
+
+
+#status{
+margin-top:15px;
+font-weight:bold;
+text-align:center;
+}
+
+
+
+
+.footer{
+background:#f8fafc;
+padding:15px;
+text-align:center;
+font-size:12px;
+color:#666;
+}
+
+
+
+
+</style>
+
+
+
+
+</head>
+
+
+
+
+<body>
+
+
+
+
+<div class="container">
+
+
+
+
+<div class="header">
+
+
+
+
+<h1>
+Radha Raman Assessment Services Pvt Ltd
+</h1>
+
+
+
+
+<p>
+Staff Attendance Portal
+</p>
+
+
+
+
+</div>
+
+
+
+
+<div class="goldbar"></div>
+
+
+
+
+<div class="content">
+
+
+
+
+<div class="card">
+
+
+
+
+<h3>Today's Exam Details</h3>
+
+
+
+
+<b>Date:</b>
+<span id="examDate">
+Loading...
+</span>
+
+
+
+
+<br><br>
+
+
+
+
+<b>Exam Name:</b>
+<span id="examName">
+Loading...
+</span>
+
+
+
+
+<br><br>
+
+
+
+
+<b>Total Shift:</b>
+<span id="totalShift">
+Loading...
+</span>
+
+
+
+
+</div>
+
+
+
+
+<div class="card">
+
+
+
+
+<h3>Staff Login</h3>
+
+
+
+
+<input
+type="text"
+id="resourceId"
+placeholder="Enter Resource ID">
+
+
+
+
+<input
+type="password"
+id="password"
+placeholder="Enter Password">
+
+
+
+
+<button onclick="login()">
+Login
+</button>
+
+<button class="signupBtn"
+onclick="openSignup()">
+New Registration
+</button>
+
+<div id="status"></div>
+
+
+
+
+</div>
+
+
+
+
+</div>
+
+
+
+
+<div class="footer">
+
+
+
+
+RRAS Attendance Management System
+
+
+
+
+</div>
+
+
+
+
+</div>
+
+
+
+
+<script>
+
+
+
+
+let loginPageHTML = document.body.innerHTML;
+let latitude = "";
+let longitude = "";
+let dashboardHTML = "";
+
+
+function loadExamInfo(){
+
+
+ google.script.run
+ .withSuccessHandler(function(info){
+
+
+   document.getElementById("examDate").innerHTML =
+   info.date;
+
+
+   document.getElementById("examName").innerHTML =
+   info.examName;
+
+
+   document.getElementById("totalShift").innerHTML =
+   info.totalShift;
+
+
+ })
+ .getExamInfo();
+
+
+}
+
+
+
+
+loadExamInfo();
+
+
+
+
+function getLocation(){
+
+
+
+
+return new Promise(
+(resolve,reject)=>{
+navigator.geolocation
+.getCurrentPosition(
+function(position){
+latitude =
+position.coords.latitude;
+longitude =
+position.coords.longitude;
+resolve();
+
+
+
+
+},
+
+
+
+
+function(error){
+
+
+
+
+reject(error);
+
+
+
+
+}
+
+
+
+
+);
+
+
+
+
+}
+
+
+
+
+);
+
+
+
+
+}
+
+
+
+
+async function login(){
+
+
+
+
+const resourceId =
+document
+.getElementById(
+"resourceId"
+)
+.value
+.trim();
+
+
+
+
+const password =
+document
+.getElementById(
+"password"
+)
+.value
+.trim();
+
+
+
+
+if(
+resourceId==="" ||
+password===""){
+alert(
+"Enter Resource ID and Password"
+);
+return;
+}
+
+
+
+
+document
+.getElementById("status")
+.innerHTML =
+"Checking Location...";
+
+
+
+
+try{
+
+
+
+
+await getLocation();
+
+
+
+
+}
+catch(err){
+
+
+
+
+alert(
+"Location Permission Required"
+);
+
+
+
+
+return;
+
+
+
+
+}
+
+
+
+
+document
+.getElementById("status")
+.innerHTML =
+"Validating Login...";
+
+
+
+
+google.script.run
+
+
+
+
+.withSuccessHandler(function(res){
+
+
+
+
+if(!res.success){
+
+
+
+
+alert(res.message);
+
+
+
+
+document.getElementById("status").innerHTML =
+    res.message;
+
+
+
+
+return;
+
+
+
+
+}
+
+
+
+
+google.script.run
+
+
+
+
+.withSuccessHandler(function(user){
+window.currentUser = user;
+
+
+
+
+document.body.innerHTML = `
+
+
+
+
+<style>
+
+body{
+    margin:0;
+    background:#edf2f7;
+    font-family:'Segoe UI',sans-serif;
+}
+
+/* HEADER */
+
+.header{
+    background:linear-gradient(135deg,#081326,#1e40af,#2563eb);
+    padding:25px 20px 90px;
+    text-align:center;
+    color:white;
+    border-bottom-left-radius:40px;
+    border-bottom-right-radius:40px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.25);
+}
+
+.company{
+    font-size:20px;
+    font-weight:700;
+    letter-spacing:1px;
+    text-transform:uppercase;
+}
+
+.company2{
+    font-size:13px;
+    opacity:.8;
+    margin-top:4px;
+}
+
+.avatar{
+    width:80px;
+    height:80px;
+    border-radius:50%;
+    background:white;
+    color:#1e40af;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    margin:25px auto 15px;
+    font-size:34px;
+    font-weight:700;
+    box-shadow:0 6px 20px rgba(0,0,0,.25);
+}
+
+.name{
+    font-size:32px;
+    font-weight:700;
+}
+
+.role{
+    margin-top:8px;
+    font-size:18px;
+    opacity:.9;
+}
+
+.center{
+    margin-top:10px;
+    font-size:16px;
+    font-weight:600;
+}
+
+.date{
+    margin-top:6px;
+    opacity:.8;
+    font-size:13px;
+}
+
+/* PROFILE CARD */
+
+.profileCard{
+    background:white;
+    margin:-55px 20px 20px;
+    border-radius:25px;
+    padding:20px;
+    box-shadow:0 8px 30px rgba(0,0,0,.1);
+}
+
+.row{
+    padding:12px 0;
+    border-bottom:1px solid #ececec;
+}
+
+.row:last-child{
+    border:none;
+}
+
+.label{
+    color:#777;
+    font-size:12px;
+    text-transform:uppercase;
+}
+
+.value{
+    margin-top:4px;
+    font-size:18px;
+    font-weight:600;
+}
+
+/* STATUS CARDS */
+
+.stats{
+    display:flex;
+    gap:15px;
+    padding:0 20px;
+    margin-bottom:20px;
+}
+
+.stat{
+    flex:1;
+    background:white;
+    border-radius:18px;
+    padding:18px;
+    text-align:center;
+    box-shadow:0 5px 20px rgba(0,0,0,.08);
+}
+
+.statTitle{
+    font-size:11px;
+    color:#777;
+}
+
+.statValue{
+    margin-top:8px;
+    font-size:22px;
+    font-weight:700;
+}
+
+/* BUTTON GRID */
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:15px;
+    padding:0 20px 30px;
+}
+
+.action{
+    border:none;
+    border-radius:22px;
+    background:white;
+    padding:22px;
+    cursor:pointer;
+    box-shadow:0 5px 20px rgba(0,0,0,.08);
+    transition:0.3s;
+}
+
+.action:hover{
+    transform:translateY(-5px);
+}
+
+.icon{
+    font-size:34px;
+}
+
+.text{
+    margin-top:12px;
+    font-size:16px;
+    font-weight:600;
+    color:#333;
+}
+
+.green{
+    border-top:5px solid #22c55e;
+}
+
+.red{
+    border-top:5px solid #ef4444;
+}
+
+.blue{
+    border-top:5px solid #2563eb;
+}
+
+.purple{
+    border-top:5px solid #9333ea;
+}
+
+.cyan{
+    border-top:5px solid #06b6d4;
+}
+
+.gray{
+    border-top:5px solid #6b7280;
+}
+
+</style>
+
+<div class="header">
+
+    <div class="company">
+        RADHA RAMAN ASSESSMENT SERVICES
+    </div>
+
+    <div class="company2">
+        PRIVATE LIMITED
+    </div>
+
+    <div class="avatar">
+        ${user.name.charAt(0)}
+    </div>
+
+    <div class="name">
+        ${user.name}
+    </div>
+
+    <div class="role">
+        ${user.role}
+    </div>
+
+    <div class="center">
+        📍 RRAS Examination Center
+    </div>
+
+    <div class="date">
+        ${new Date().toLocaleDateString()}
+    </div>
+
+</div>
+
+<div class="profileCard">
+
+    <div class="row">
+        <div class="label">Resource ID</div>
+        <div class="value">${user.resourceId}</div>
+    </div>
+
+    <div class="row">
+        <div class="label">Mobile Number</div>
+        <div class="value">${user.mobile}</div>
+    </div>
+
+    <div class="row">
+        <div class="label">Email Address</div>
+        <div class="value">${user.email}</div>
+    </div>
+
+</div>
+
+<div class="stats">
+
+    <div class="stat">
+        <div class="statTitle">STATUS</div>
+        <div class="statValue">ACTIVE</div>
+    </div>
+
+    <div class="stat">
+        <div class="statTitle">ROLE</div>
+        <div class="statValue">${user.role}</div>
+    </div>
+
+    <div class="stat">
+        <div class="statTitle">CENTER</div>
+        <div class="statValue">RRAS</div>
+    </div>
+
+</div>
+
+<div class="grid">
+
+    <button class="action green" onclick="checkIn()">
+        <div class="icon">✅</div>
+        <div class="text">Check In</div>
+    </button>
+
+    <button class="action red" onclick="checkOut()">
+        <div class="icon">❌</div>
+        <div class="text">Check Out</div>
+    </button>
+
+    <button class="action blue" onclick="todayAttendance()">
+        <div class="icon">📅</div>
+        <div class="text">Attendance</div>
+    </button>
+
+    <button class="action purple" onclick="attendanceHistory()">
+        <div class="icon">📋</div>
+        <div class="text">History</div>
+    </button>
+${
+(
+    user.employment == "Permanent Staff" ||
+    user.role == "Center Head"
+)
+?
+'<button class="action purple" onclick="leaveApply()">' +
+'<div class="icon">📝</div>' +
+'<div class="text">Leave Apply</div>' +
+'</button>'
+: ''
+}
+
+    <button class="action cyan" onclick="profile()">
+        <div class="icon">👤</div>
+        <div class="text">Profile</div>
+    </button>
+    <button class="action cyan"
+onclick="changePassword()">
+
+<div class="icon">🔑</div>
+
+<div class="text">
+Change Password
+</div>
+
+</button>
+    
+${user.role === "Center Head" ? `
+
+<button class="action blue"
+onclick="dailyExpense()">
+    <div class="icon">💰</div>
+    <div class="text">Daily Expense</div>
+</button>
+
+<button class="action purple"
+onclick="manageStaff()">
+    <div class="icon">👥</div>
+    <div class="text">Manage Staff</div>
+</button>
+
+` : ""}
+
+    <button class="action gray" onclick="logout()">
+        <div class="icon">🚪</div>
+        <div class="text">Logout</div>
+    </button>
+
+</div>
+
+
+
+
+`;
+dashboardHTML =
+document.body.innerHTML;
+
+
+
+
+})
+
+
+
+
+.getDashboardUser(
+res.resourceId
+);
+
+
+
+
+})
+.withFailureHandler(function(err){
+
+
+
+
+alert("SERVER ERROR");
+
+
+
+
+console.log(err);
+
+
+
+
+})
+
+
+
+
+.loginUser(
+resourceId,
+password,
+latitude,
+longitude
+);
+
+
+
+
+}
+function checkIn(){
+
+let os = "Unknown";
+
+if (/Android/i.test(navigator.userAgent)) {
+    os = "Android";
+}
+else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    os = "iPhone";
+}
+else if (/Windows/i.test(navigator.userAgent)) {
+    os = "Windows";
+}
+else if (/Mac/i.test(navigator.userAgent)) {
+    os = "Mac";
+}
+else if (/Linux/i.test(navigator.userAgent)) {
+    os = "Linux";
+}
+
+const fullDevice =
+    navigator.userAgent;
+
+const deviceId =
+    os + "|" +
+    screen.width + "x" + screen.height + "|" +
+    navigator.hardwareConcurrency + "|" +
+    (navigator.deviceMemory || "NA") + "|" +
+    navigator.language + "|" +
+    Intl.DateTimeFormat().resolvedOptions().timeZone + "|" +
+    screen.colorDepth + "|" +
+    navigator.maxTouchPoints + "|" +
+    window.devicePixelRatio;
+
+google.script.run
+
+.withSuccessHandler(function(isDuplicate){
+
+    if(isDuplicate){
+
+        const agree = confirm(
+
+            "This mobile has already been used by another staff today.\n\n" +
+
+            "If you continue, an email will immediately be sent to the Center Head.\n\n" +
+
+            "Press OK to continue.\nPress Cancel to stop."
+
+        );
+
+        if(!agree){
+            return;
+        }
+
+        google.script.run
+        .sendDuplicateMail(
+            window.currentUser
+        );
+
+    }
+
+    google.script.run
+
+    .withSuccessHandler(function(res){
+
+        alert(res.message);
+
+    })
+
+    .saveCheckIn(
+
+        window.currentUser,
+        latitude,
+        longitude,
+        fullDevice,
+        deviceId
+
+    );
+
+})
+
+.checkDuplicateDevice(
+
+    deviceId,
+
+    window.currentUser.resourceId
+
+);
+
+}
+
+
+
+
+function checkOut(){
+
+    let os = "Unknown";
+
+    if (/Android/i.test(navigator.userAgent)) {
+        os = "Android";
+    }
+    else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        os = "iPhone";
+    }
+    else if (/Windows/i.test(navigator.userAgent)) {
+        os = "Windows";
+    }
+    else if (/Mac/i.test(navigator.userAgent)) {
+        os = "Mac";
+    }
+    else if (/Linux/i.test(navigator.userAgent)) {
+        os = "Linux";
+    }
+
+    const deviceId =
+        os + "|" +
+        screen.width + "x" + screen.height + "|" +
+        navigator.hardwareConcurrency + "|" +
+        (navigator.deviceMemory || "NA") + "|" +
+        navigator.language + "|" +
+        Intl.DateTimeFormat().resolvedOptions().timeZone + "|" +
+        screen.colorDepth + "|" +
+        navigator.maxTouchPoints + "|" +
+        window.devicePixelRatio;
+
+    let shiftCount = prompt(
+        "Enter Number of Shifts (0 to 5)",
+        "1"
+    );
+
+    if (shiftCount === null) return;
+
+    shiftCount = Number(shiftCount);
+
+    if (
+        isNaN(shiftCount) ||
+        shiftCount < 0 ||
+        shiftCount > 5
+    ){
+        alert("Please enter a value between 0 and 5");
+        return;
+    }
+
+    google.script.run
+
+    .withSuccessHandler(function(isDuplicate){
+
+        if(isDuplicate){
+
+            const agree = confirm(
+
+                "This mobile has already been used by another staff today.\n\n" +
+
+                "If you continue, an email will immediately be sent to the Center Head.\n\n" +
+
+                "Press OK to continue.\nPress Cancel to stop."
+
+            );
+
+            if(!agree){
+                return;
+            }
+
+google.script.run
+    .sendDuplicateCheckoutMail(window.currentUser);
+
+        }
+
+        google.script.run
+
+        .withSuccessHandler(function(res){
+
+            alert(res.message);
+
+        })
+
+        .saveCheckOut(
+
+            window.currentUser.resourceId,
+            latitude,
+            longitude,
+            shiftCount,
+            deviceId
+
+        );
+
+    })
+
+    .checkDuplicateDevice(
+
+        deviceId,
+        window.currentUser.resourceId
+
+    );
+
+}
+
+function todayAttendance(){
+
+
+google.script.run
+
+
+.withSuccessHandler(function(data){
+
+
+if(!data.found){
+
+
+alert("No attendance found for today.");
+
+
+return;
+
+
+}
+
+
+document.body.innerHTML = `
+
+
+<style>
+
+
+body{
+background:#f4f6f9;
+font-family:Segoe UI,Arial,sans-serif;
+margin:0;
+}
+
+
+.header{
+background:#1e3a8a;
+color:white;
+padding:20px;
+text-align:center;
+}
+
+
+.card{
+background:white;
+margin:15px;
+padding:20px;
+border-radius:10px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+
+.btn{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:6px;
+font-size:15px;
+cursor:pointer;
+color:white;
+}
+
+
+.back{
+background:#374151;
+}
+
+
+</style>
+
+
+<div class="header">
+
+
+<h2>Today's Attendance</h2>
+
+
+</div>
+
+
+<div class="card">
+
+
+<b>Check-In Time:</b>
+<br><br>
+${data.checkIn}
+
+
+<br><br>
+
+
+<b>Check-Out Time:</b>
+<br><br>
+${data.checkOut}
+
+
+<br><br>
+
+
+<b>Duration:</b>
+<br><br>
+${data.duration}
+
+
+<br><br>
+
+
+<b>Status:</b>
+<br><br>
+${data.status}
+
+
+<button class="btn back"
+onclick="goBack()">
+
+
+Back
+
+
+</button>
+
+
+</div>
+
+
+`;
+
+
+})
+
+
+.getTodayAttendance(
+window.currentUser.resourceId
+);
+
+
+}
+
+
+
+
+function attendanceHistory(){
+
+
+document.body.innerHTML = `
+
+
+<style>
+
+
+body{
+background:#f4f6f9;
+font-family:Segoe UI,Arial,sans-serif;
+margin:0;
+}
+
+
+.header{
+background:#1e3a8a;
+color:white;
+padding:20px;
+text-align:center;
+}
+
+
+.card{
+background:white;
+margin:15px;
+padding:15px;
+border-radius:10px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+
+.btn{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:6px;
+font-size:15px;
+cursor:pointer;
+color:white;
+}
+
+
+.history{
+background:#2563eb;
+}
+
+
+.logout{
+background:#374151;
+}
+
+
+</style>
+
+
+<div class="header">
+
+
+<h2>Attendance Report</h2>
+
+
+</div>
+
+
+<div class="card">
+
+
+<label>From Date</label>
+
+
+<input type="date" id="fromDate">
+
+
+<br><br>
+
+
+<label>To Date</label>
+
+
+<input type="date" id="toDate">
+
+
+<button class="btn history"
+onclick="sendHistory()">
+
+
+Generate Report
+
+
+</button>
+
+
+<button class="btn logout"
+onclick="goBack()">
+
+
+Back
+
+
+</button>
+
+
+</div>
+
+
+`;
+
+
+}
+function sendHistory(){
+
+
+const fromDate =
+document.getElementById(
+"fromDate"
+).value;
+
+
+const toDate =
+document.getElementById(
+"toDate"
+).value;
+
+
+if(fromDate==="" || toDate===""){
+
+
+alert("Select both dates");
+
+
+return;
+
+
+}
+
+
+google.script.run
+
+
+.withSuccessHandler(function(msg){
+
+
+alert(msg);
+
+
+})
+
+
+.withFailureHandler(function(err){
+
+
+alert("Report Error");
+
+
+console.log(err);
+
+
+})
+
+
+.sendAttendanceReport(
+
+
+window.currentUser.resourceId,
+
+
+fromDate,
+
+
+toDate
+
+
+);
+
+
+}
+function goBack(){
+
+
+document.body.innerHTML =
+dashboardHTML;
+
+
+}
+function profile(){
+
+
+document.body.innerHTML = `
+
+
+<style>
+
+
+body{
+background:#f4f6f9;
+font-family:Segoe UI,Arial,sans-serif;
+margin:0;
+}
+
+
+.header{
+background:#1e3a8a;
+color:white;
+padding:20px;
+text-align:center;
+}
+
+
+.card{
+background:white;
+margin:15px;
+padding:20px;
+border-radius:10px;
+box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+
+.btn{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:6px;
+font-size:15px;
+cursor:pointer;
+color:white;
+}
+
+
+.back{
+background:#374151;
+}
+
+
+</style>
+
+
+<div class="header">
+
+
+<h2>My Profile</h2>
+
+
+</div>
+
+
+<div class="card">
+
+
+<b>Name:</b>
+<br><br>
+${window.currentUser.name}
+
+
+<br><br>
+
+
+<b>Resource ID:</b>
+<br><br>
+${window.currentUser.resourceId}
+
+
+<br><br>
+
+
+<b>Mobile:</b>
+<br><br>
+${window.currentUser.mobile}
+
+
+<br><br>
+
+
+<b>Email:</b>
+<br><br>
+${window.currentUser.email}
+
+
+<br><br>
+
+
+<b>Date of Birth:</b>
+<br><br>
+${window.currentUser.dob}
+
+
+<br><br>
+
+
+<b>Aadhar Number:</b>
+<br><br>
+${window.currentUser.aadhar}
+
+
+<br><br>
+
+
+<b>Address:</b>
+<br><br>
+${window.currentUser.address}
+
+
+<br><br>
+
+
+<b>Employment Type:</b>
+<br><br>
+${window.currentUser.employment}
+
+
+<br><br>
+
+
+<b>Exam Role:</b>
+<br><br>
+${window.currentUser.role}
+
+
+<button class="btn back"
+onclick="goBack()">
+
+
+Back
+
+
+</button>
+
+
+</div>
+
+
+`;
+}
+function manageStaff(){
+
+google.script.run
+
+.withSuccessHandler(function(staff){
+
+showStaffPage(staff);
+
+})
+
+.getStaffList();
+
+}
+function showStaffPage(staff){
+
+let html=`
+
+<style>
+
+body{
+font-family:Arial,sans-serif;
+background:#f4f6f9;
+padding:20px;
+margin:0;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:10px;
+text-align:center;
+}
+
+th{
+background:#1e3a8a;
+color:white;
+}
+
+button{
+padding:10px 20px;
+margin-top:20px;
+cursor:pointer;
+}
+label{
+    display:inline-block;
+    margin-right:10px;
+}
+
+</style>
+
+<h2>Staff Management</h2>
+
+<table id="staffTable">
+
+<tr>
+    <th>Name</th>
+    <th>Role</th>
+    <th>Active</th>
+    <th>Assigned Shift</th>
+</tr>
+
+`;
+staff.sort(function(a,b){
+
+const order = {
+"Center Head":1,
+"IT":2,
+"Invigilator":3
+};
+
+return (order[a.role] || 99) - (order[b.role] || 99);
+
+});
+
+staff.forEach(function(emp){
+
+html+=`
+
+<tr>
+
+<td>${emp.name}</td>
+
+<td>${emp.role}</td>
+
+<td>
+
+<input
+type="checkbox"
+class="activeStatus"
+data-id="${emp.resourceId}"
+${emp.active=="YES" ? "checked" : ""}>
+
+</td>
+
+<td style="white-space:nowrap;">
+
+<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="0" ${emp.shift=="0"?"checked":""}>0</label>
+
+<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="1" ${emp.shift=="1"?"checked":""}>1</label>
+
+<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="2" ${emp.shift=="2"?"checked":""}>2</label>
+
+<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="3" ${emp.shift=="3"?"checked":""}>3</label>
+
+<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="4" ${emp.shift=="4"?"checked":""}>4</label>
+
+<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="5" ${emp.shift=="5"?"checked":""}>5</label>
+
+</td>
+
+</tr>
+
+`;
+
+});
+
+html += `
+
+</table>
+
+<br>
+
+<div>
+
+<button onclick="saveStaffStatus()">
+Save
+</button>
+
+<button onclick="goBack()">
+Back
+</button>
+
+</div>
+
+`;
+
+document.body.innerHTML=html;
+
+}
+function saveStaffStatus(){
+
+  const list = [];
+
+  document.querySelectorAll(".activeStatus").forEach(function(chk){
+
+    const id = chk.dataset.id;
+
+const selected = document.querySelector(
+  '.shift[data-id="' + id + '"]:checked'
+);
+
+const shift = selected ? selected.value : "0";
+
+    list.push({
+
+      resourceId: id,
+
+      active: chk.checked ? "YES" : "NO",
+
+      shift: shift
+
+    });
+
+  });
+
+  google.script.run
+  .withSuccessHandler(function(msg){
+
+      alert(msg);
+
+  })
+  .withFailureHandler(function(err){
+
+      alert(err.message);
+
+  })
+  .updateStaffStatus(list);
+
+}
+function changePassword(){
+
+document.body.innerHTML = `
+
+<style>
+
+.cpBody{
+background:#f4f6f9;
+min-height:100vh;
+padding:20px;
+font-family:Segoe UI,Arial,sans-serif;
+}
+
+.cpHeader{
+background:#1e3a8a;
+color:#fff;
+padding:20px;
+text-align:center;
+font-size:24px;
+font-weight:bold;
+border-radius:10px 10px 0 0;
+}
+
+.cpCard{
+background:#fff;
+max-width:500px;
+margin:20px auto;
+border-radius:10px;
+box-shadow:0 2px 8px rgba(0,0,0,.12);
+overflow:hidden;
+}
+
+.cpContent{
+padding:20px;
+}
+
+.cpLabel{
+display:block;
+margin-top:15px;
+margin-bottom:6px;
+font-weight:bold;
+}
+
+.cpInput{
+width:100%;
+padding:12px;
+border:1px solid #ccc;
+border-radius:6px;
+box-sizing:border-box;
+font-size:15px;
+}
+
+.cpBtn{
+width:100%;
+padding:12px;
+border:none;
+border-radius:6px;
+font-size:15px;
+cursor:pointer;
+margin-top:15px;
+font-weight:bold;
+}
+
+.cpSave{
+background:#2563eb;
+color:white;
+}
+
+.cpSave:hover{
+background:#1d4ed8;
+}
+
+.cpCancel{
+background:#6b7280;
+color:white;
+}
+
+.cpCancel:hover{
+background:#4b5563;
+}
+
+</style>
+
+<div class="cpBody">
+
+<div class="cpCard">
+
+<div class="cpHeader">
+
+🔑 Change Password
+
+</div>
+
+<div class="cpContent">
+
+<label class="cpLabel">
+Current Password
+</label>
+
+<input
+class="cpInput"
+type="password"
+id="oldPassword"
+placeholder="Enter Current Password">
+
+<label class="cpLabel">
+New Password
+</label>
+
+<input
+class="cpInput"
+type="password"
+id="newPassword"
+placeholder="Enter New Password">
+
+<label class="cpLabel">
+Confirm Password
+</label>
+
+<input
+class="cpInput"
+type="password"
+id="confirmPassword"
+placeholder="Confirm New Password">
+
+<button
+class="cpBtn cpSave"
+onclick="savePassword()">
+
+Save Password
+
+</button>
+
+<button
+class="cpBtn cpCancel"
+onclick="goBack()">
+
+Cancel
+
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+}
+
+function savePassword(){
+
+const oldPass =
+document.getElementById("oldPassword").value.trim();
+
+const newPass =
+document.getElementById("newPassword").value.trim();
+
+const confirmPass =
+document.getElementById("confirmPassword").value.trim();
+
+if(oldPass=="" || newPass=="" || confirmPass==""){
+alert("Please fill all fields.");
+return;
+}
+
+if(newPass!=confirmPass){
+alert("Passwords do not match.");
+return;
+}
+
+google.script.run
+.withSuccessHandler(function(res){
+
+alert(res.message);
+
+if(res.success){
+logout();
+}
+
+})
+.changePassword(
+window.currentUser.resourceId,
+oldPass,
+newPass
+);
+
+}
+function openSignup(){
+
+    window.open(
+    "https://docs.google.com/forms/d/e/1FAIpQLScT-FaPVgSxXUnbpFruFn1_NMmfZ5TtFs-il7t4zimJ2xA4gA/viewform?usp=header",
+    "_blank"
+    );
+
+}
+function dailyExpense(){
+
+    window.open(
+        "https://docs.google.com/forms/d/e/1FAIpQLSdel88X6a4Ka6hpPC1f8Z8TgIuPAnaN9YwfZDm5Dv4v1FZ-aw/viewform?usp=header",
+        "_blank"
+    );
+
+}
+function leaveApply(){
+
+    window.open(
+        "https://docs.google.com/forms/d/e/1FAIpQLSfgXO4GB13r4IoBaTO_q5Cks4dhkk65OEQawj35S7EWZOBZjA/viewform?usp=publish-editor",
+        "_blank"
+    );
+
+}
+function logout(){
+
+
+ if(confirm("Do you want to logout?")){
+
+
+   window.currentUser = null;
+
+
+   document.body.innerHTML =
+   loginPageHTML;
+
+
+   loadExamInfo();
+
+
+ }
+
+
+}
+</script>
+</body>
+</html>
+
+
+
+
+
