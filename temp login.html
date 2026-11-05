@@ -1633,148 +1633,425 @@ Back
 }
 function manageStaff(){
 
-google.script.run
+  google.script.run
 
-.withSuccessHandler(function(staff){
+  .withSuccessHandler(function(staff){
 
-showStaffPage(staff);
+    showStaffPage(staff);
 
-})
+  })
 
-.getStaffList();
+  .withFailureHandler(function(err){
+
+    alert("Error loading staff: " + err.message);
+
+  })
+
+  .getStaffList(window.currentUser.resourceId);
 
 }
 function showStaffPage(staff){
 
-let html=`
+  const roleOptions = [
+    "Center Head",
+    "IT",
+    "Invigilator",
+    "Electrician",
+    "MAF",
+    "Security",
+    "CCTV Operator"
+  ];
 
-<style>
+  let html = `
 
-body{
-font-family:Arial,sans-serif;
-background:#f4f6f9;
-padding:20px;
-margin:0;
-}
+  <style>
 
-table{
-width:100%;
-border-collapse:collapse;
-background:white;
-}
+  body{
+    font-family:Arial,sans-serif;
+    background:#f4f6f9;
+    padding:20px;
+    margin:0;
+  }
 
-th,td{
-border:1px solid #ddd;
-padding:10px;
-text-align:center;
-}
+  .examCard{
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    margin-bottom:25px;
+    border:1px solid #ddd;
+  }
 
-th{
-background:#1e3a8a;
-color:white;
-}
+  .examGrid{
+    display:grid;
+    grid-template-columns:2fr 2fr 1fr;
+    gap:15px;
+  }
 
-button{
-padding:10px 20px;
-margin-top:20px;
-cursor:pointer;
-}
-label{
+  .examGrid label{
+    display:block;
+    font-weight:bold;
+    margin-bottom:7px;
+  }
+
+  .examGrid input,
+  .examGrid select{
+    width:100%;
+    padding:10px;
+    box-sizing:border-box;
+    border:1px solid #ccc;
+    border-radius:5px;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+  }
+
+  th,td{
+    border:1px solid #ddd;
+    padding:10px;
+    text-align:center;
+  }
+
+  th{
+    background:#1e3a8a;
+    color:white;
+  }
+
+  button{
+    padding:10px 20px;
+    margin-top:20px;
+    cursor:pointer;
+  }
+
+  label{
     display:inline-block;
     margin-right:10px;
-}
+  }
 
-</style>
+  .roleSelect{
+    padding:8px;
+    border:1px solid #ccc;
+    border-radius:5px;
+    width:150px;
+  }
 
-<h2>Staff Management</h2>
+  .saveExam{
+    background:#1e3a8a;
+    color:white;
+    border:none;
+    border-radius:5px;
+    width:100%;
+  }
 
-<table id="staffTable">
+  @media(max-width:700px){
+    .examGrid{
+      grid-template-columns:1fr;
+    }
 
-<tr>
+    table{
+      min-width:750px;
+    }
+
+    .tableWrap{
+      overflow-x:auto;
+    }
+  }
+
+  </style>
+
+  <h2>Staff Management</h2>
+
+  <!-- EXAM DETAILS -->
+
+  <div class="examCard">
+
+    <h3>📅 Exam Details</h3>
+
+    <div class="examGrid">
+
+      <div>
+        <label>Exam Date</label>
+
+        <input
+          type="date"
+          id="examDateInput"
+          onchange="loadSelectedExam()">
+      </div>
+
+      <div>
+        <label>Exam Name</label>
+
+        <input
+          type="text"
+          id="examNameInput"
+          placeholder="Enter Exam Name">
+      </div>
+
+      <div>
+        <label>Total Shift</label>
+
+        <select id="examShiftInput">
+
+          <option value="">Select Shift</option>
+          <option value="1">1 Shift</option>
+          <option value="2">2 Shifts</option>
+          <option value="3">3 Shifts</option>
+          <option value="4">4 Shifts</option>
+          <option value="5">5 Shifts</option>
+
+        </select>
+      </div>
+
+    </div>
+
+    <button class="saveExam" onclick="saveExamDetailsUI()">
+      Save Exam Details
+    </button>
+
+    <div id="examMessage"
+    style="margin-top:10px;font-weight:bold;">
+    </div>
+
+  </div>
+
+  <!-- STAFF TABLE -->
+
+  <h3>Staff Details</h3>
+
+  <div class="tableWrap">
+
+  <table id="staffTable">
+
+  <tr>
     <th>Name</th>
     <th>Role</th>
     <th>Active</th>
     <th>Assigned Shift</th>
-</tr>
+  </tr>
 
-`;
-staff.sort(function(a,b){
+  `;
 
-const order = {
-"Center Head":1,
-"IT":2,
-"Invigilator":3
-};
+  staff.sort(function(a,b){
 
-return (order[a.role] || 99) - (order[b.role] || 99);
+    const order = {
+      "Center Head":1,
+      "IT":2,
+      "Invigilator":3,
+      "Electrician":4,
+      "MAF":5,
+      "Security":6,
+      "CCTV Operator":7
+    };
 
-});
+    return (order[a.role] || 99) -
+           (order[b.role] || 99);
 
-staff.forEach(function(emp){
+  });
 
-html+=`
+  staff.forEach(function(emp){
 
-<tr>
+    let options = "";
 
-<td>${emp.name}</td>
+    roleOptions.forEach(function(role){
 
-<td>${emp.role}</td>
+      options += `
 
-<td>
+        <option value="${role}"
+        ${emp.role === role ? "selected" : ""}>
 
-<input
-type="checkbox"
-class="activeStatus"
-data-id="${emp.resourceId}"
-${emp.active=="YES" ? "checked" : ""}>
+          ${role}
 
-</td>
+        </option>
 
-<td style="white-space:nowrap;">
+      `;
 
-<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="0" ${emp.shift=="0"?"checked":""}>0</label>
+    });
 
-<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="1" ${emp.shift=="1"?"checked":""}>1</label>
+    html += `
 
-<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="2" ${emp.shift=="2"?"checked":""}>2</label>
+    <tr>
 
-<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="3" ${emp.shift=="3"?"checked":""}>3</label>
+      <td>${emp.name}</td>
 
-<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="4" ${emp.shift=="4"?"checked":""}>4</label>
+      <td>
 
-<label><input type="radio" name="shift${emp.resourceId}" class="shift" data-id="${emp.resourceId}" value="5" ${emp.shift=="5"?"checked":""}>5</label>
+        <select
+          class="roleSelect"
+          data-id="${emp.resourceId}">
 
-</td>
+          ${options}
 
-</tr>
+        </select>
 
-`;
+      </td>
 
-});
+      <td>
 
-html += `
+        <input
+          type="checkbox"
+          class="activeStatus"
+          data-id="${emp.resourceId}"
+          ${emp.active=="YES" ? "checked" : ""}>
 
-</table>
+      </td>
 
-<br>
+      <td style="white-space:nowrap;">
 
-<div>
+        ${[0,1,2,3,4,5].map(function(n){
 
-<button onclick="saveStaffStatus()">
-Save
-</button>
+          return `
 
-<button onclick="goBack()">
-Back
-</button>
+            <label>
+              <input type="radio"
+              name="shift${emp.resourceId}"
+              class="shift"
+              data-id="${emp.resourceId}"
+              value="${n}"
+              ${String(emp.shift)==String(n)?"checked":""}>
+              ${n}
+            </label>
 
-</div>
+          `;
 
-`;
+        }).join("")}
 
-document.body.innerHTML=html;
+      </td>
+
+    </tr>
+
+    `;
+
+  });
+
+  html += `
+
+  </table>
+
+  </div>
+
+  <br>
+
+  <button onclick="saveStaffStatus()">
+    Save Staff Details
+  </button>
+
+  <button onclick="goBack()">
+    Back
+  </button>
+
+  `;
+
+  document.body.innerHTML = html;
 
 }
+function loadSelectedExam(){
+
+  const date = document.getElementById("examDateInput").value;
+
+  if(!date) return;
+
+  document.getElementById("examMessage").innerHTML =
+    "Loading Exam Details...";
+
+  google.script.run
+
+  .withSuccessHandler(function(res){
+
+    if(res.found){
+
+      document.getElementById("examNameInput").value =
+        res.examName;
+
+      document.getElementById("examShiftInput").value =
+        res.totalShift;
+
+      document.getElementById("examMessage").innerHTML =
+        "Existing exam details loaded.";
+
+    }
+    else{
+
+      document.getElementById("examNameInput").value = "";
+
+      document.getElementById("examShiftInput").value = "";
+
+      document.getElementById("examMessage").innerHTML =
+        "No exam scheduled for this date. Enter new details.";
+
+    }
+
+  })
+
+  .withFailureHandler(function(err){
+
+    alert(err.message);
+
+  })
+
+  .getExamDetailsByDate(
+    date,
+    window.currentUser.resourceId
+  );
+
+}
+function saveExamDetailsUI(){
+
+  const date =
+    document.getElementById("examDateInput").value;
+
+  const examName =
+    document.getElementById("examNameInput").value.trim();
+
+  const totalShift =
+    document.getElementById("examShiftInput").value;
+
+  if(!date || !examName || !totalShift){
+
+    alert("Please fill all Exam Details.");
+
+    return;
+
+  }
+
+  const btn = document.querySelector(".saveExam");
+
+  btn.disabled = true;
+  btn.innerText = "Saving...";
+
+  google.script.run
+
+  .withSuccessHandler(function(msg){
+
+    alert(msg);
+
+    document.getElementById("examMessage").innerHTML =
+      "✓ " + msg;
+
+    btn.disabled = false;
+    btn.innerText = "Save Exam Details";
+
+  })
+
+  .withFailureHandler(function(err){
+
+    alert("Error: " + err.message);
+
+    btn.disabled = false;
+    btn.innerText = "Save Exam Details";
+
+  })
+
+  .saveExamDetails(
+    date,
+    examName,
+    totalShift,
+    window.currentUser.resourceId
+  );
+
+}
+
 function saveStaffStatus(){
 
   const list = [];
@@ -1783,15 +2060,21 @@ function saveStaffStatus(){
 
     const id = chk.dataset.id;
 
-const selected = document.querySelector(
-  '.shift[data-id="' + id + '"]:checked'
-);
+    const selectedShift = document.querySelector(
+      '.shift[data-id="' + id + '"]:checked'
+    );
 
-const shift = selected ? selected.value : "0";
+    const selectedRole = document.querySelector(
+      '.roleSelect[data-id="' + id + '"]'
+    );
+
+    const shift = selectedShift ? selectedShift.value : "0";
 
     list.push({
 
       resourceId: id,
+
+      role: selectedRole.value,
 
       active: chk.checked ? "YES" : "NO",
 
@@ -1802,17 +2085,23 @@ const shift = selected ? selected.value : "0";
   });
 
   google.script.run
+
   .withSuccessHandler(function(msg){
 
-      alert(msg);
+    alert(msg);
 
   })
+
   .withFailureHandler(function(err){
 
-      alert(err.message);
+    alert("Update Error: " + err.message);
 
   })
-  .updateStaffStatus(list);
+
+  .updateStaffStatus(
+    list,
+    window.currentUser.resourceId
+  );
 
 }
 function changePassword(){
