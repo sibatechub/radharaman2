@@ -1635,7 +1635,7 @@ message:"User Not Found."
 };
 
 }
-function getStaffList(){
+function getStaffList(adminResourceId){
 
   const ss =
     SpreadsheetApp.openById(LOGIN_SPREADSHEET_ID);
@@ -1646,11 +1646,36 @@ function getStaffList(){
   const data =
     sheet.getDataRange().getValues();
 
+  // Verify Admin
+  let isAdmin = false;
+
+  for(let i = 1; i < data.length; i++){
+
+    if(
+      String(data[i][9]).trim() ===
+      String(adminResourceId).trim() &&
+      String(data[i][8]).trim() === "Admin" &&
+      String(data[i][10]).trim().toUpperCase() === "YES"
+    ){
+
+      isAdmin = true;
+      break;
+
+    }
+
+  }
+
+  if(!isAdmin){
+
+    throw new Error("Only Admin can access Staff Management.");
+
+  }
+
   let result = [];
 
   for(let i = 1; i < data.length; i++){
 
-    // Skip Admin users
+    // Exclude Admin
     if(
       String(data[i][8]).trim().toLowerCase() === "admin"
     ){
@@ -1677,31 +1702,124 @@ function getStaffList(){
 
 }
 
-function updateStaffStatus(list){
+function updateStaffStatus(list, adminResourceId){
 
-  const ss = SpreadsheetApp.openById(LOGIN_SPREADSHEET_ID);
+  const ss =
+    SpreadsheetApp.openById(LOGIN_SPREADSHEET_ID);
 
-  const sheet = ss.getSheetByName("STAFF_MASTER");
+  const sheet =
+    ss.getSheetByName("STAFF_MASTER");
 
-  const settings = ss.getSheetByName("SETTINGS");
+  const settings =
+    ss.getSheetByName("SETTINGS");
 
-  const ownerEmail = settings.getRange("D2").getValue();
+  const ownerEmail =
+    settings.getRange("D2").getValue();
 
-  const data = sheet.getDataRange().getValues();
+  const data =
+    sheet.getDataRange().getValues();
 
   // =================================
-  // UPDATE STAFF STATUS AND SHIFT
+  // VERIFY ADMIN
+  // =================================
+
+  let isAdmin = false;
+
+  for(let i = 1; i < data.length; i++){
+
+    if(
+      String(data[i][9]).trim() ===
+      String(adminResourceId).trim() &&
+      String(data[i][8]).trim() === "Admin" &&
+      String(data[i][10]).trim().toUpperCase() === "YES"
+    ){
+
+      isAdmin = true;
+      break;
+
+    }
+
+  }
+
+  if(!isAdmin){
+
+    throw new Error("Only Admin can update staff details.");
+
+  }
+
+  // =================================
+  // ALLOWED ROLES
+  // =================================
+
+  const allowedRoles = [
+    "Center Head",
+    "IT",
+    "Invigilator",
+    "Electrician",
+    "MAF",
+    "Security",
+    "CCTV Operator"
+  ];
+
+  // =================================
+  // STORE ROLE CHANGES
+  // =================================
+
+  let roleChanges = [];
+
+  // =================================
+  // UPDATE STAFF DETAILS
   // =================================
 
   list.forEach(function(emp){
 
     for(let i = 1; i < data.length; i++){
 
-      if(String(data[i][9]) == String(emp.resourceId)){
+      if(
+        String(data[i][9]).trim() ===
+        String(emp.resourceId).trim()
+      ){
 
+        const oldRole =
+          String(data[i][8]).trim();
+
+        const newRole =
+          String(emp.role).trim();
+
+        // Validate role
+        if(!allowedRoles.includes(newRole)){
+
+          throw new Error(
+            "Invalid role selected for " + data[i][1]
+          );
+
+        }
+
+        // Update Role - Column I
+        sheet.getRange(i + 1, 9).setValue(newRole);
+
+        // Update Active - Column K
         sheet.getRange(i + 1, 11).setValue(emp.active);
 
+        // Update Shift - Column M
         sheet.getRange(i + 1, 13).setValue(emp.shift);
+
+        // Record role changes
+        if(oldRole !== newRole){
+
+          roleChanges.push({
+
+            name: data[i][1],
+
+            resourceId: data[i][9],
+
+            oldRole: oldRole,
+
+            newRole: newRole
+
+          });
+
+        }
 
         break;
 
@@ -1714,10 +1832,11 @@ function updateStaffStatus(list){
   SpreadsheetApp.flush();
 
   // =================================
-  // RELOAD UPDATED STAFF DATA
+  // RELOAD UPDATED DATA
   // =================================
 
-  const rows = sheet.getDataRange().getValues();
+  const rows =
+    sheet.getDataRange().getValues();
 
   const today = Utilities.formatDate(
     new Date(),
@@ -1730,13 +1849,24 @@ function updateStaffStatus(list){
   // EXCLUDE ADMIN
   // =================================
 
-  let roleSummary = {};
+  const roleOrder = [
+  "Center Head",
+  "IT",
+  "Electrician",
+  "Invigilator",
+  "MAF",
+  "Security",
+  "CCTV Operator"
+];
+
+let roleSummary = {};
 
   rows.slice(1).forEach(function(r){
 
     const role = String(r[8]).trim();
 
-    const active = String(r[10]).trim().toUpperCase();
+    const active =
+      String(r[10]).trim().toUpperCase();
 
     if(
       active === "YES" &&
@@ -1745,7 +1875,9 @@ function updateStaffStatus(list){
     ){
 
       if(!roleSummary[role]){
+
         roleSummary[role] = 0;
+
       }
 
       roleSummary[role]++;
@@ -1755,21 +1887,92 @@ function updateStaffStatus(list){
   });
 
   // =================================
-  // GENERATE SUMMARY HTML
+  // SUMMARY HTML
   // =================================
 
   let summaryHtml = "";
 
-  Object.keys(roleSummary).forEach(function(role){
+roleOrder.forEach(function(role){
+
+  if(roleSummary[role]){
 
     summaryHtml += `
+
       <tr>
+
         <td><b>Total ${role}</b></td>
+
         <td>${roleSummary[role]}</td>
+
+      </tr>
+
+    `;
+
+  }
+
+});
+
+  if(summaryHtml === ""){
+
+    summaryHtml = `
+      <tr>
+        <td colspan="2">No Active Staff</td>
       </tr>
     `;
 
-  });
+  }
+
+  // =================================
+  // ROLE CHANGE REPORT
+  // =================================
+
+  let roleChangeHtml = "";
+
+  if(roleChanges.length > 0){
+
+    roleChangeHtml = `
+
+    <br>
+
+    <h3>Role Changes</h3>
+
+    <table border="1" cellpadding="8" cellspacing="0"
+    style="border-collapse:collapse;">
+
+      <tr style="background:#1e3a8a;color:white;">
+
+        <th>Name</th>
+        <th>Resource ID</th>
+        <th>Previous Role</th>
+        <th>Updated Role</th>
+
+      </tr>
+
+    `;
+
+    roleChanges.forEach(function(emp){
+
+      roleChangeHtml += `
+
+      <tr>
+
+        <td>${emp.name}</td>
+
+        <td>${emp.resourceId}</td>
+
+        <td>${emp.oldRole}</td>
+
+        <td>${emp.newRole}</td>
+
+      </tr>
+
+      `;
+
+    });
+
+    roleChangeHtml += `</table>`;
+
+  }
 
   // =================================
   // EMAIL HTML
@@ -1792,6 +1995,8 @@ function updateStaffStatus(list){
 
   </table>
 
+  ${roleChangeHtml}
+
   <br><br>
 
   <h3>Active Staff Details</h3>
@@ -1800,28 +2005,50 @@ function updateStaffStatus(list){
   style="border-collapse:collapse;">
 
     <tr style="background:#1e3a8a;color:white;">
-<th>SL. No.</th>
-<th>Name</th>
-<th>Role</th>
-<th>Resource ID</th>
-<th>Active</th>
-<th>Assigned Shift</th>
+
+      <th>SL. No.</th>
+      <th>Name</th>
+      <th>Role</th>
+      <th>Resource ID</th>
+      <th>Active</th>
+      <th>Assigned Shift</th>
+
     </tr>
 
   `;
 
   // =================================
   // ACTIVE STAFF DETAILS
-  // EXCLUDE ADMIN + SERIAL NUMBER
+  // EXCLUDE ADMIN
   // =================================
+// Sort Active Staff by Fixed Role Order
+const activeStaff = rows.slice(1).filter(function(r){
 
-  let slNo = 1;
+  return (
+    String(r[10]).trim().toUpperCase() === "YES" &&
+    String(r[8]).trim().toLowerCase() !== "admin"
+  );
 
-  rows.slice(1).forEach(function(r){
+});
+
+activeStaff.sort(function(a,b){
+
+  const roleA = roleOrder.indexOf(String(a[8]).trim());
+  const roleB = roleOrder.indexOf(String(b[8]).trim());
+
+  return (roleA === -1 ? 999 : roleA) -
+         (roleB === -1 ? 999 : roleB);
+
+});
+
+let slNo = 1;
+
+activeStaff.forEach(function(r){
 
     const role = String(r[8]).trim();
 
-    const active = String(r[10]).trim().toUpperCase();
+    const active =
+      String(r[10]).trim().toUpperCase();
 
     if(
       active === "YES" &&
@@ -1832,12 +2059,17 @@ function updateStaffStatus(list){
 
       <tr>
 
-<td>${slNo++}</td>
-<td>${r[1]}</td>
-<td>${r[8]}</td>
-<td>${r[9]}</td>
-<td>${r[10]}</td>
-<td>${r[12]}</td>
+        <td>${slNo++}</td>
+
+        <td>${r[1]}</td>
+
+        <td>${r[8]}</td>
+
+        <td>${r[9]}</td>
+
+        <td>${r[10]}</td>
+
+        <td>${r[12]}</td>
 
       </tr>
 
@@ -1893,5 +2125,159 @@ function testGmailService() {
   Logger.log("Remaining daily quota: " + quota);
 
   Logger.log("Gmail authorization successful");
+
+}
+function getExamDetailsByDate(dateString, adminResourceId){
+
+  const ss = SpreadsheetApp.openById(LOGIN_SPREADSHEET_ID);
+
+  const staffSheet = ss.getSheetByName("STAFF_MASTER");
+  const staffData = staffSheet.getDataRange().getValues();
+
+  // Verify Admin
+  const isAdmin = staffData.slice(1).some(function(r){
+
+    return (
+      String(r[9]).trim() === String(adminResourceId).trim() &&
+      String(r[8]).trim() === "Admin" &&
+      String(r[10]).trim().toUpperCase() === "YES"
+    );
+
+  });
+
+  if(!isAdmin){
+    throw new Error("Only Admin can access Exam Details.");
+  }
+
+  const sheet = ss.getSheetByName("Exam_Details");
+  const data = sheet.getDataRange().getValues();
+
+  const parts = dateString.split("-");
+  const selectedDate = Utilities.formatDate(
+    new Date(Number(parts[0]), Number(parts[1])-1, Number(parts[2])),
+    Session.getScriptTimeZone(),
+    "dd-MM-yyyy"
+  );
+
+  for(let i = 1; i < data.length; i++){
+
+    const cellDate = data[i][1];
+
+    if(!cellDate) continue;
+
+    const existingDate = Utilities.formatDate(
+      new Date(cellDate),
+      Session.getScriptTimeZone(),
+      "dd-MM-yyyy"
+    );
+
+    if(existingDate === selectedDate){
+
+      return {
+        found: true,
+        examName: data[i][2],
+        totalShift: data[i][3]
+      };
+
+    }
+
+  }
+
+  return {
+    found: false,
+    examName: "",
+    totalShift: ""
+  };
+
+}
+function saveExamDetails(dateString, examName, totalShift, adminResourceId){
+
+  const ss = SpreadsheetApp.openById(LOGIN_SPREADSHEET_ID);
+
+  const staffSheet = ss.getSheetByName("STAFF_MASTER");
+  const staffData = staffSheet.getDataRange().getValues();
+
+  // Verify Admin
+  const isAdmin = staffData.slice(1).some(function(r){
+
+    return (
+      String(r[9]).trim() === String(adminResourceId).trim() &&
+      String(r[8]).trim() === "Admin" &&
+      String(r[10]).trim().toUpperCase() === "YES"
+    );
+
+  });
+
+  if(!isAdmin){
+    throw new Error("Only Admin can update Exam Details.");
+  }
+
+  if(!dateString || !examName.trim() || !totalShift){
+    throw new Error("Please fill all Exam Details.");
+  }
+
+  totalShift = Number(totalShift);
+
+  if(!Number.isInteger(totalShift) || totalShift < 1 || totalShift > 5){
+    throw new Error("Total Shift must be between 1 and 5.");
+  }
+
+  const parts = dateString.split("-");
+
+  const examDate = new Date(
+    Number(parts[0]),
+    Number(parts[1])-1,
+    Number(parts[2])
+  );
+
+  if(isNaN(examDate.getTime())){
+    throw new Error("Invalid exam date.");
+  }
+
+  const formattedDate = Utilities.formatDate(
+    examDate,
+    Session.getScriptTimeZone(),
+    "dd-MM-yyyy"
+  );
+
+  const sheet = ss.getSheetByName("Exam_Details");
+
+  const data = sheet.getDataRange().getValues();
+
+  // Check whether date already exists
+  for(let i = 1; i < data.length; i++){
+
+    if(!data[i][1]) continue;
+
+    const existingDate = Utilities.formatDate(
+      new Date(data[i][1]),
+      Session.getScriptTimeZone(),
+      "dd-MM-yyyy"
+    );
+
+    if(existingDate === formattedDate){
+
+      // Update existing row
+      sheet.getRange(i+1, 2, 1, 3).setValues([[
+        examDate,
+        examName.trim(),
+        totalShift
+      ]]);
+
+      return "Exam Details Updated Successfully.";
+
+    }
+
+  }
+
+  // Insert new exam record
+  sheet.appendRow([
+    new Date(),
+    examDate,
+    examName.trim(),
+    totalShift
+  ]);
+
+  return "New Exam Details Saved Successfully.";
 
 }
